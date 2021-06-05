@@ -2,6 +2,8 @@
 using System.Windows;
 using System.Windows.Controls;
 using System.Data;
+using System.Linq;
+using System.Globalization;
 
 namespace Calc
 {
@@ -18,6 +20,50 @@ namespace Calc
             InitializeComponent();
         }
 
+        private double ToDecimal(string str)
+        {
+            string[] number = new string[2];
+            if (str.Contains('.'))
+            {
+                number = str.Split('.');
+            }
+            else
+            {
+                number[0] = str;
+                number[1] = "0";
+            }
+            int sign;
+            if (number[0].Contains('-'))
+            {
+                sign = -1;
+                number[0] = number[0].Replace("-", "");
+            }
+            else
+            {
+                sign = 1;
+            }
+            double decimalNum = 0;
+            double beforeDot = Convert.ToDouble(number[0]);
+            double afterDot = Convert.ToDouble(number[1]);
+            for (int i = 0; i < number[0].Length; i++)
+            {
+                double last = beforeDot % 10;
+                decimalNum += Math.Pow(7, i) * last;
+                beforeDot /= 10;
+            }
+            if (number[1].Length != 0 && number[1] != "0")
+            {
+                for (int i = number[1].Length; i > 0; i--)
+                {
+                    double last = afterDot % 10;
+                    decimalNum += Math.Pow(7, -i) * last;
+                    afterDot /= 10;
+                }
+            }
+            return (sign == -1) ? -decimalNum : decimalNum;
+        }
+
+
         private string FromDecimal(double num)
         {
             int sign = (num < 0) ? -1 : 1;
@@ -28,7 +74,7 @@ namespace Calc
             do
             {
                 StrInt = (zel % 7) + StrInt;
-                zel = zel / 7;
+                zel /= 7;
             } while (zel != 0);
 
             if (FracVal != 0)
@@ -37,17 +83,17 @@ namespace Calc
                 int tmp;
                 while (FracVal > 0 && FracPart.Length <= 5)
                 {
-                    FracVal = FracVal * 7;
+                    FracVal *= 7;
                     tmp = (int)Math.Truncate(FracVal);
-                    FracPart = FracPart + tmp;
-                    FracVal = FracVal - tmp;
+                    FracPart += tmp;
+                    FracVal -= tmp;
                 }
-                StrInt = StrInt + "," + Convert.ToString(FracPart);
+                StrInt = StrInt + "." + Convert.ToString(FracPart);
             }
             return (sign == -1) ? "-" + StrInt : StrInt;
         }
 
-        private void BClick(object sender, RoutedEventArgs e) 
+        private void BClick(object sender, RoutedEventArgs e)
         {
             string buttonName = (string)((Button)e.OriginalSource).Content;
             if (resultGot)
@@ -58,10 +104,33 @@ namespace Calc
             switch (buttonName)
             {
                 case "=":
-                    var result = new DataTable().Compute(expression, null);
+                    string currentExpression = "(" + expression + ")";
+                    string finalExpression = "";
+                    string number = "";
+                    for (int i = 0; i < currentExpression.Length; i++)
+                    {
+                        double symbol;
+                        bool success = double.TryParse(currentExpression[i].ToString(), out symbol);
+                        if (success || currentExpression[i].ToString() == ".")
+                        {
+                            number += currentExpression[i].ToString();
+                        }
+                        else
+                        {
+                            if (number != "")
+                            {
+                                finalExpression += ToDecimal(number).ToString("F", CultureInfo.CreateSpecificCulture("en-CA")) + currentExpression[i].ToString();
+                            }
+                            else
+                            {
+                                finalExpression += currentExpression[i].ToString();
+                            }
+                            number = "";
+                        }
+                    }
+                    var result = new DataTable().Compute(finalExpression, null);
                     Text.Text = "";
-                    Text.Text += expression + '\n';
-                    //Text.Text += "Decimal: " + result + '\n';
+                    Text.Text += input + '\n';
                     Text.Text += FromDecimal(Convert.ToDouble(result));
                     resultGot = true;
                     break;
@@ -78,163 +147,5 @@ namespace Calc
                     break;
             }
         }
-
-
-
-        /*
-                private void Text_TextChanged(object sender, TextChangedEventArgs e)
-                {
-
-                }
-
-                private void Button1_Click(object sender, RoutedEventArgs e)
-                {
-                    Text.Text = "";
-                    input += "1";
-                    expression += "1";
-                    Text.Text += input;
-                }
-
-                private void Button2_Click(object sender, RoutedEventArgs e)
-                {
-                    //Text.Text = "";
-                    input += "2";
-                    expression += "2";
-                    Text.Text += input;
-                }
-
-                private void Button3_Click(object sender, RoutedEventArgs e)
-                {
-                    Text.Text = "";
-                    input += "3";
-                    Text.Text += input;
-                }
-
-                private void Button4_Click(object sender, RoutedEventArgs e)
-                {
-                    Text.Text = "";
-                    input += "4";
-                    Text.Text += input;
-                }
-
-                private void Button5_Click(object sender, RoutedEventArgs e)
-                {
-                    Text.Text = "";
-                    input += "5";
-                    Text.Text += input;
-                }
-
-                private void Button6_Click(object sender, RoutedEventArgs e)
-                {
-                    Text.Text = "";
-                    input += "6";
-                    Text.Text += input;
-                }
-
-                private void Button0_Click(object sender, RoutedEventArgs e)
-                {
-                    Text.Text = "";
-                    input += "0";
-                    Text.Text += input;
-                }
-
-                private void Dot_Click(object sender, RoutedEventArgs e)
-                {
-                    expression += ".";
-                }
-
-                private void Mult_Click(object sender, RoutedEventArgs e)
-                {
-                    operand1 = input;
-                    operation = '*';
-                    expression += "*";
-                    input = string.Empty;
-                }
-
-                private void Div_Click(object sender, RoutedEventArgs e)
-                {
-                    operand1 = input;
-                    operation = '/';
-                    input = string.Empty;
-                }
-
-                private void Plus_Click(object sender, RoutedEventArgs e)
-                {
-                    operand1 = input;
-                    operation = '+';
-                    expression += "+";
-                    Text.Text += operation;
-                    input = string.Empty;
-                }
-
-                private void Minus_Click(object sender, RoutedEventArgs e)
-                {
-                    operand1 = input;
-                    operation = '-';
-                    input = string.Empty;
-                }
-
-                private void Equal_Click(object sender, RoutedEventArgs e)
-                {
-                    operand2 = input;
-                    double num1, num2;
-                    double.TryParse(operand1, out num1);
-                    double.TryParse(operand2, out num2);
-
-                    if (operation == '+')
-                    {
-                        result = num1 + num2;
-                        Text.Text = result.ToString();
-                    }
-                    else if (operation == '-')
-                    {
-                        result = num1 - num2;
-                        Text.Text = result.ToString();
-                    }
-                    else if (operation == '*')
-                    {
-                        result = num1 * num2;
-                        Text.Text = result.ToString();
-                    }
-                    else if (operation == '/')
-                    {
-                        if (num2 != 0)
-                        {
-                            result = num1 / num2;
-                            Text.Text = result.ToString();
-                        }
-                        else
-                        {
-                            Text.Text = "DIV/Zero!";
-                        }
-
-                    }
-                }
-
-                private void Del_Click(object sender, RoutedEventArgs e)
-                {
-                    Text.Text = "";
-                    input = string.Empty;
-                    operand1 = string.Empty;
-                    operand2 = string.Empty;
-                    expression = string.Empty;
-                }
-
-                private void Open_Click(object sender, RoutedEventArgs e)
-                {
-                    operand1 = input;
-                    operation = '(';
-                    expression += "(";
-                    input = string.Empty;
-                }
-
-                private void Close_Click(object sender, RoutedEventArgs e)
-                {
-                    operand1 = input;
-                    operation = ')';
-                    expression += ")";
-                    input = string.Empty;
-                }
-        */
     }
 }
